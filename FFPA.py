@@ -82,32 +82,36 @@ if paired_end == True:
         cmd = "cp {} {}tmp/illuminaPE/.".format( args.i_raw_illumina[1], target_dir)
         os.system(cmd)
     elif args.i_trimmed_illumina != "":
-        cmd = "mkdir {}tmp/illuminaPE/".format(target_dir)
+        cmd = "mkdir {}tmp/illuminaPE_trimmed/".format(target_dir)
         os.system(cmd)
-        cmd = "cp {} {}tmp/illuminaPE/.".format(args.i_trimmed_illumina[0], target_dir)
+        cmd = "cp {} {}tmp/illuminaPE_trimmed/.".format(args.i_trimmed_illumina[0], target_dir)
         os.system(cmd)
-        cmd = "cp {} {}tmp/illuminaPE/.".format(args.i_trimmed_illumina[1], target_dir)
+        cmd = "cp {} {}tmp/illuminaPE_trimmed/.".format(args.i_trimmed_illumina[1], target_dir)
         os.system(cmd)
+
 
 #Handle nanopore input
 if args.i_trimmed_nanopore != "":
     nanopore_name = args.i_trimmed_nanopore.split('/')[-1]
+    cmd = "cp {} {}/tmp/{}".format(args.i_trimmed_nanopore, target_dir, nanopore_name)
+    os.system(cmd)
 elif args.i_raw_nanopore != "":
     nanopore_name = args.i_raw_nanopore.split('/')[-1]
+    # Unzip nanoporereads, since qcat etc. cant handle .gz
+    if args.i_raw_nanopore[-3:] == ".gz":
+        cmd = "gunzip -c {} > {}/tmp/{}".format(args.i_raw_nanopore, target_dir, nanopore_name[:-3])
+        unzipnanopore = nanopore_name[:-3]
+        os.system(cmd)
+    elif args.i_raw_nanopore[-3:] != ".gz":
+        cmd = "cp {} {}/tmp/{}".format(args.i_raw_nanopore, target_dir, nanopore_name)
+        unzipnanopore = nanopore_name
+        os.system(cmd)
 
-#Unzip nanoporereads, since qcat etc. cant handle .gz
-if args.i_raw_nanopore[-3:] == ".gz":
-    cmd = "gunzip -c {} > {}/tmp/{}".format(args.i_raw_nanopore, target_dir, nanopore_name[:-3])
-    unzipnanopore = nanopore_name[:-3]
-    os.system(cmd)
-else:
-    cmd = "cp {} {}/tmp/{}".format(args.i_raw_nanopore, target_dir, nanopore_name)
-    unzipnanopore = nanopore_name
-    os.system(cmd)
 
-print ("Trimmomatic started")
 if args.i_raw_illumina != "":
     if paired_end == True:
+        print("Trimmomatic started")
+
         cmd = "docker run -it -v {}tmp/illuminaPE/:/tmp/illuminaPE/ --name trimmomatic_container{} fjukstad/trimmomatic PE /tmp/illuminaPE/{} /tmp/illuminaPE/{} /tmp/output_forward_paired.fq.gz /tmp/output_forward_unpaired.fq.gz /tmp/output_reverse_paired.fq.gz /tmp/output_reverse_unpaired.fq.gz ILLUMINACLIP:{}:2:30:10 LEADING:20 TRAILING:20 MINLEN:140".format(target_dir, jobid, illumina_name1, illumina_name2, trimmomatic_db)
         os.system(cmd)
 
@@ -163,6 +167,8 @@ else:
     trimmed_nanopore = nanopore_name
 
 
+
+
 #NANOPLOT
 cmd = "docker run --name nanoplot{} -it -v {}/tmp/{}:/tmp/{} nanozoo/nanoplot:1.32.0--1ae6f5d NanoPlot --fastq_rich /tmp/{} -o /tmp/nanoplots/ --N50 -p {} -t 8".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore, trimmed_nanopore)
 os.system(cmd)
@@ -179,6 +185,7 @@ os.system(cmd)
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
 
+
 #FASTQC:
 if args.i_raw_illumina != "" or args.i_trimmed_illumina != "":
     cmd = "docker run --name fastqc{} -it -v {}/tmp/{}:/tmp/input nanozoo/fastqc fastqc --extract -t 8 /tmp/input/{} /tmp/input/{} ".format(jobid, target_dir, "illuminaPE_trimmed", illumina_name1, illumina_name2)
@@ -194,7 +201,6 @@ os.system(cmd)
 
 cmd = "docker container rm {}".format(id)
 os.system(cmd)
-
 
 #Nanopore pipeline
 cmd = "docker run --name nanofilt_q{}  -it -v {}/tmp/{}:/tmp/input/{} mcfonsecalab/nanofilt NanoFilt -q {} /tmp/input/{} | gzip > {}/tmp/{}.q{}_nanofilt".format(jobid, target_dir, trimmed_nanopore, trimmed_nanopore, args.nanoporeqscore, trimmed_nanopore, target_dir, nanopore_name, args.nanoporeqscore)
@@ -343,8 +349,6 @@ os.system(cmd)
 cmd = "rm {}/tmp/krakenoutput_nanopore".format(target_dir)
 os.system(cmd)
 
-
-sys.exit("pre assembly")
 #HERE
 #Unicycler nanopore
 
@@ -535,14 +539,6 @@ if nanopore_name[-6:] == ".fastq":
     prefix_nanopore = nanopore_namenanopore_name[0:-6]
 else:
     prefix_nanopore = nanopore_name[0:-9]
-print (prefix_nanopore)
-cmd = "rm {}/tmp/nanoporeReads/{}.fastq.gz.fastq".format(target_dir, prefix_nanopore)
-os.system(cmd)
-cmd = "mv {}/tmp/nanoporeReads/{}_trimmed.fastq {}/tmp/nanoporeReads/{}_trimmed.fastq.gz".format(target_dir, nanopore_name, target_dir, prefix_nanopore)
-os.system(cmd)
-cmd = "mv {}/tmp/nanoporeReads/{}.fastq.gz.{}_nanofilt.fastq {}/tmp/nanoporeReads/{}.{}_nanofilt.fastq".format(target_dir, nanopore_name, args.nanoporeqscore, target_dir, prefix_nanopore, args.nanoporeqscore)
-os.system(cmd)
-
 
 
 cmd = "mv {}/tmp/* {}/output/.".format(target_dir, target_dir)
