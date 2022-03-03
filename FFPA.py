@@ -536,7 +536,7 @@ os.system(cmd)
 
 #Renaming
 if nanopore_name[-6:] == ".fastq":
-    prefix_nanopore = nanopore_namenanopore_name[0:-6]
+    prefix_nanopore = nanopore_name[0:-6]
 else:
     prefix_nanopore = nanopore_name[0:-9]
 
