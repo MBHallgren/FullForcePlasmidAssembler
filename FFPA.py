@@ -148,7 +148,7 @@ if args.i_raw_illumina != "":
 
 if args.i_raw_nanopore != "":
     print ("Qcat is running, be patient :) ")
-    cmd = "docker run -it -v {}/tmp/{}:/tmp/{} --name qcat_container{} mcfonsecalab/qcat qcat -f /tmp/{} -o /tmp/{}_trimmed.fastq".format(target_dir,unzipnanopore, unzipnanopore, jobid, unzipnanopore, unzipnanopore)
+    cmd = "docker run -it -v {}/tmp/{}:/tmp/{} --name qcat_container{} mcfonsecalab/qcat qcat -f /tmp/{} -o /tmp/{}_trimmed.fastq --trim".format(target_dir,unzipnanopore, unzipnanopore, jobid, unzipnanopore, unzipnanopore)
     os.system(cmd)
     print("qcat complete") ########### MISSING
     proc = subprocess.Popen("docker ps -aqf \"name={}{}\"".format("qcat_container", jobid), shell=True, stdout=subprocess.PIPE, )
